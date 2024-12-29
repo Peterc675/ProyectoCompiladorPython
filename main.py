@@ -1,8 +1,10 @@
 import tkinter as tk
+from tkinter import ttk, scrolledtext
 from lexer import Lexer
 from parser import Parser
+from semantic_analyzer import SemanticAnalyzer
 
-def analizar_codigo():
+def compilar_codigo():
     codigo_sql = text_input.get("1.0", tk.END).strip()
     try:
         # Analizador Léxico
@@ -10,56 +12,92 @@ def analizar_codigo():
         tokens = lexer.get_tokens()
 
         # Mostrar tokens
+        tokens_display.config(state="normal")
         tokens_display.delete("1.0", tk.END)
         tokens_display.insert(tk.END, "\n".join(tokens))
+        tokens_display.config(state="disabled")
 
         # Analizador Sintáctico
         parser = Parser(tokens)
-        generated_code = parser.parse()  # Generar el código Python
+        tables = parser.parse()
 
-        # Validación: mostrar en consola para depuración
-        print("Código Generado:", generated_code)  # Verifica que no esté vacío
+        # Analizador Semántico
+        analyzer = SemanticAnalyzer(tables)
+        analyzer.analyze()
 
-        # Mostrar resultados
-        resultado_display.delete("1.0", tk.END)
-        resultado_display.insert(tk.END, "Análisis sintáctico completado sin errores.")
+        # Mostrar Tabla de Símbolos
+        symbol_table = analyzer.get_symbol_table()
+        symbol_display.config(state="normal")
+        symbol_display.delete("1.0", tk.END)
+        for entry in symbol_table:
+            symbol_display.insert(tk.END, f"{entry}\n")
+        symbol_display.config(state="disabled")
 
-        # Mostrar código generado
+        # Generar Código Python
+        code_output = ""
+        for table_name, columns in tables.items():
+            # Crear la clase
+            code_output += f"class {table_name.capitalize()}:\n"
+            # Constructor con columnas como parámetros
+            code_output += "    def __init__(self, " + ", ".join([f"{col['name']}: {map_python_type(col['type'])}" for col in columns]) + "):\n"
+            for col in columns:
+                code_output += f"        self.{col['name']} = {col['name']}\n"
+            code_output += "\n"
+
+        # Mostrar el código generado
+        code_display.config(state="normal")
         code_display.delete("1.0", tk.END)
-        if generated_code.strip():
-            code_display.insert(tk.END, generated_code)
-        else:
-            code_display.insert(tk.END, "No se generó ningún código. Revisa el SQL ingresado.")
-    except Exception as e:
+        code_display.insert(tk.END, code_output)
+        code_display.config(state="disabled")
+
+        # Mostrar resultados del análisis
+        resultado_display.config(state="normal")
         resultado_display.delete("1.0", tk.END)
-        resultado_display.insert(tk.END, str(e))
+        resultado_display.insert(tk.END, "Compilación completada sin errores.")
+        resultado_display.config(state="disabled")
+    except Exception as e:
+        resultado_display.config(state="normal")
+        resultado_display.delete("1.0", tk.END)
+        resultado_display.insert(tk.END, f"Error: {str(e)}")
+        resultado_display.config(state="disabled")
 
-# Configuración de la interfaz gráfica
+def map_python_type(sql_type):
+    """
+    Mapea los tipos de datos SQL a sus equivalentes en Python.
+    """
+    mapping = {
+        "INT": "int",
+        "VARCHAR": "str",
+        "BOOLEAN": "bool",
+        "DECIMAL": "float",
+        "DATE": "str"
+    }
+    return mapping.get(sql_type, "str")
+
 root = tk.Tk()
-root.title("Compilador SQL - Análisis y Generación de Código")
+root.title("Compilador SQL - Funcional")
 
-# Entrada del código SQL
-tk.Label(root, text="Ingrese el código SQL:").pack()
-text_input = tk.Text(root, height=10, width=60)
+# Interfaz Gráfica
+ttk.Label(root, text="Ingrese el código SQL:").pack(anchor="w")
+text_input = scrolledtext.ScrolledText(root, height=10, width=70)
 text_input.pack()
 
-# Botón de análisis
-tk.Button(root, text="Analizar Código", command=analizar_codigo).pack()
+ttk.Button(root, text="Compilar Código", command=compilar_codigo).pack(pady=5)
 
-# Área de tokens
-tk.Label(root, text="Tokens generados:").pack()
-tokens_display = tk.Text(root, height=10, width=60, state="normal")
+ttk.Label(root, text="Tokens generados:").pack(anchor="w")
+tokens_display = scrolledtext.ScrolledText(root, height=10, width=70, state="disabled")
 tokens_display.pack()
 
-# Resultados del análisis
-tk.Label(root, text="Resultados del análisis:").pack()
-resultado_display = tk.Text(root, height=5, width=60, state="normal")
+ttk.Label(root, text="Resultados del análisis:").pack(anchor="w")
+resultado_display = scrolledtext.ScrolledText(root, height=5, width=70, state="disabled")
 resultado_display.pack()
 
-# Código generado
-tk.Label(root, text="Código generado:").pack()
-code_display = tk.Text(root, height=10, width=60, state="normal")
+ttk.Label(root, text="Tabla de símbolos:").pack(anchor="w")
+symbol_display = scrolledtext.ScrolledText(root, height=10, width=70, state="disabled")
+symbol_display.pack()
+
+ttk.Label(root, text="Código generado en Python:").pack(anchor="w")
+code_display = scrolledtext.ScrolledText(root, height=10, width=70, state="disabled")
 code_display.pack()
 
-# Ejecutar la interfaz
 root.mainloop()

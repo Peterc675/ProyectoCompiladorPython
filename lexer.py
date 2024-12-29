@@ -5,7 +5,7 @@ class Lexer:
 
     def get_tokens(self):
         tokens = []
-        reserved_words = ["CREATE", "TABLE", "INT", "VARCHAR", "BOOLEAN", "PRIMARY", "KEY", "FOREIGN"]
+        reserved_words = ["CREATE", "TABLE", "PRIMARY", "KEY", "FOREIGN", "INT", "VARCHAR", "BOOLEAN", "DECIMAL", "DATE"]
 
         while self.position < len(self.input):
             current_char = self.input[self.position]
@@ -14,10 +14,10 @@ class Lexer:
                 self.position += 1
             elif current_char.isalpha():
                 word = self._read_word()
-                if word in reserved_words:
-                    tokens.append(word)
+                if word.upper() in reserved_words:
+                    tokens.append(word.upper())
                 else:
-                    tokens.append("IDENTIFICADOR")  # Aquí eliminamos el formato con paréntesis
+                    tokens.append("IDENTIFICADOR")
             elif current_char.isdigit():
                 tokens.append(f"NÚMERO({self._read_number()})")
             elif current_char in "(),;":
